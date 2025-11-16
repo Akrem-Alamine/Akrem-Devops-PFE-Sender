@@ -320,45 +320,6 @@ def send_email_with_cv(recipient_email, recipient_name, subject, body, sender_em
         logger.error(f"❌ Failed to send email to {recipient_name} <{recipient_email}>: {str(e)}")
         return False, str(e)
 
-def get_next_recipient():
-    """Get next recipient from CSV using round-robin"""
-    csv_path = os.environ.get('CSV_FILE_PATH', 'data/recipients.csv')
-    
-    if not os.path.exists(csv_path):
-        logger.warning(f"CSV file not found at {csv_path}")
-        return None
-    
-    try:
-        with open(csv_path, 'r', encoding='utf-8') as file:
-            csv_reader = csv.DictReader(file)
-            recipients = list(csv_reader)
-            
-        if not recipients:
-            logger.warning("No recipients found in CSV file")
-            return None
-            
-        # Round-robin selection
-        counter = get_email_counter()
-        next_counter = (counter + 1) % len(recipients)
-        update_email_counter(next_counter)
-        
-        recipient = recipients[counter]
-        
-        return {
-            'email': recipient.get('email', '').strip(),
-            'first_name': recipient.get('first_name', '').strip(),
-            'last_name': recipient.get('last_name', '').strip(),
-            'full_name': f"{recipient.get('first_name', '').strip()} {recipient.get('last_name', '').strip()}".strip(),
-            'subject': recipient.get('subject', 'Job Application - Software Developer Position').strip(),
-            'content': recipient.get('content', '').strip(),
-            'counter': counter,
-            'total_recipients': len(recipients)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error reading CSV file: {str(e)}")
-        return None
-
 @app.route('/test-automation', methods=['POST'])
 def test_automation():
     """Test the full automation pipeline with company research and AI content generation"""
