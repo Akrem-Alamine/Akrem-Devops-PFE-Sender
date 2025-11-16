@@ -87,6 +87,24 @@ curl -X POST https://pfe-sender.uc.r.appspot.com/cron/send-emails
 gcloud app logs tail -s default
 ```
 
+### 🚨 Troubleshooting 502 Errors
+If you get 502 Bad Gateway errors:
+
+```bash
+# 1. Pull latest fixes and redeploy
+git pull
+gcloud app deploy app_test.yaml --quiet
+
+# 2. Check application logs for errors
+gcloud app logs read --limit 50
+
+# 3. Test the debug endpoint (if available)
+curl https://pfe-sender.uc.r.appspot.com/debug
+
+# 4. Try deploying production version instead
+gcloud app deploy app.yaml --quiet
+```
+
 ---
 
 ## 📊 Mock CSV Data Details
