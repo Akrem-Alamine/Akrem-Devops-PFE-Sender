@@ -20,5 +20,3 @@ env_variables:
   START_HOUR: "0"
   END_HOUR: "23"
   TEST_MODE: "true"
-  START_HOUR: "9"
-  END_HOUR: "17"
