@@ -359,40 +359,65 @@ def get_next_recipient():
         logger.error(f"Error reading CSV file: {str(e)}")
         return None
 
-@app.route('/health')
-def health():
-    return jsonify({
-        'status': 'healthy',
-        'service': 'pfe-email-sender',
-        'version': '3.0-CLEAN',
-        'environment': 'production',
-        'timestamp': datetime.now().isoformat()
-    })
-
-@app.route('/status')
-def status():
-    csv_path = os.environ.get('CSV_FILE_PATH', 'data/recipients.csv')
-    csv_exists = os.path.exists(csv_path)
-    recipient_count = 0
+@app.route('/test-automation', methods=['POST'])
+def test_automation():
+    """Test the full automation pipeline with company research and AI content generation"""
+    try:
+        sender_email = os.environ.get('EMAIL_ADDRESS')
+        sender_password = os.environ.get('EMAIL_PASSWORD')
+        
+        if not sender_email or not sender_password:
+            return jsonify({'status': 'error', 'message': 'Email credentials not configured'}), 500
+        
+        recipient_data = get_next_recipient()
+        
+        if recipient_data and recipient_data['email']:
+            # Get company info for automation
+            company = recipient_data.get('company', '')
+            first_name = recipient_data.get('first_name', '')
+            
+            if company:
+                # Research company and generate personalized content
+                company_info = research_company(company)
+                personalized_email = generate_personalized_email(first_name, company, company_info)
+                
+                subject = f"Software Developer Opportunity at {company}"
+                body = personalized_email
+            else:
+                # Fallback to default content
+                subject = recipient_data['subject']
+                body = recipient_data['content']
+            
+            success, message = send_email_with_cv(
+                recipient_email=recipient_data['email'],
+                recipient_name=recipient_data['full_name'],
+                subject=f"[AUTO-TEST] {subject}",
+                body=f"[AUTOMATION TEST]\n\n{body}\n\nThis is a test of the full automation pipeline.",
+                sender_email=sender_email,
+                sender_password=sender_password
+            )
+            
+            if success:
+                return jsonify({
+                    'status': 'success',
+                    'message': f'✅ Automated email sent! ({message})',
+                    'details': {
+                        'to': recipient_data['email'],
+                        'recipient_name': recipient_data['full_name'],
+                        'company': company,
+                        'subject': subject,
+                        'automation_features': ['Company Research', 'AI Content Generation'],
+                        'recipient_number': recipient_data['counter'] + 1,
+                        'total_recipients': recipient_data['total_recipients']
+                    }
+                })
+            else:
+                return jsonify({'status': 'error', 'message': f'❌ Automation test failed: {message}'}), 500
+        else:
+            return jsonify({'status': 'error', 'message': 'No recipient data available'}), 500
     
-    if csv_exists:
-        try:
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                recipient_count = len(list(csv.DictReader(file)))
-        except:
-            recipient_count = 0
-    
-    return jsonify({
-        'status': 'running',
-        'business_hours': f"{os.environ.get('START_HOUR', '9')}:00 - {os.environ.get('END_HOUR', '17')}:00 UTC",
-        'csv_status': {
-            'file_exists': csv_exists,
-            'recipient_count': recipient_count,
-            'current_counter': get_email_counter()
-        },
-        'email_configured': bool(os.environ.get('EMAIL_ADDRESS')),
-        'timestamp': datetime.now().isoformat()
-    })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Automation test failed: {str(e)}'}), 500
 
 @app.route('/cron/send-emails', methods=['GET', 'POST'])
 def cron_send_emails():
