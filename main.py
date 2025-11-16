@@ -320,6 +320,45 @@ def send_email_with_cv(recipient_email, recipient_name, subject, body, sender_em
         logger.error(f"❌ Failed to send email to {recipient_name} <{recipient_email}>: {str(e)}")
         return False, str(e)
 
+@app.route('/debug-csv', methods=['GET'])
+def debug_csv():
+    """Debug endpoint to check CSV reading"""
+    try:
+        csv_path = os.environ.get('CSV_FILE_PATH', 'data/contacts_real.csv')
+        
+        if not os.path.exists(csv_path):
+            return jsonify({'error': f'CSV file not found: {csv_path}'}), 404
+        
+        recipients = []
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            recipients = list(reader)
+        
+        # Get current recipient
+        counter = get_email_counter()
+        if recipients:
+            recipient = recipients[counter % len(recipients)]
+            return jsonify({
+                'csv_path': csv_path,
+                'total_recipients': len(recipients),
+                'current_counter': counter,
+                'current_recipient': {
+                    'first_name': recipient.get('First Name', ''),
+                    'last_name': recipient.get('Last Name', ''),
+                    'email': recipient.get('Email', ''),
+                    'company': recipient.get('Company', ''),
+                    'title': recipient.get('Title', ''),
+                    'country': recipient.get('Country', '')
+                },
+                'raw_recipient_keys': list(recipient.keys()),
+                'all_recipients': recipients[:2]  # First 2 for debugging
+            })
+        else:
+            return jsonify({'error': 'No recipients found'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': f'Debug failed: {str(e)}'}), 500
+
 @app.route('/test-automation', methods=['POST'])
 def test_automation():
     """Test the full automation pipeline with company research and AI content generation"""
