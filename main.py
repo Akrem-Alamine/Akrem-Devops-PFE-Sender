@@ -359,6 +359,50 @@ def debug_csv():
     except Exception as e:
         return jsonify({'error': f'Debug failed: {str(e)}'}), 500
 
+@app.route('/test-simple', methods=['POST'])
+def test_simple():
+    """Simple test without AI generation"""
+    try:
+        csv_path = os.environ.get('CSV_FILE_PATH', 'data/contacts_real.csv')
+        
+        recipients = []
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            recipients = list(reader)
+        
+        if not recipients:
+            return jsonify({'status': 'error', 'message': 'No recipients found'}), 500
+            
+        # Get current recipient without AI processing
+        counter = get_email_counter()
+        recipient = recipients[counter % len(recipients)]
+        
+        # Simple data extraction
+        first_name = recipient.get('First Name', '').strip()
+        last_name = recipient.get('Last Name', '').strip()
+        company = recipient.get('Company', '').strip()
+        email = recipient.get('Email', '').strip()
+        
+        # Simple test email
+        subject = f"Test Email for {company}"
+        body = f"Hello {first_name},\n\nThis is a simple test email for {company}.\n\nBest regards,\nAkrem"
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Simple test data retrieved',
+            'details': {
+                'email': email,
+                'first_name': first_name,
+                'last_name': last_name,
+                'company': company,
+                'subject': subject,
+                'counter': counter
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Simple test failed: {str(e)}'}), 500
+
 @app.route('/test-automation', methods=['POST'])
 def test_automation():
     """Test the full automation pipeline with company research and AI content generation"""
