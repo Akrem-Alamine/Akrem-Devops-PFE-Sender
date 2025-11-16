@@ -197,12 +197,20 @@ def get_next_recipient():
             logger.warning("No recipients found in CSV file")
             return None
             
-        # Round-robin selection
+        # Sequential selection (no looping)
         counter = get_email_counter()
-        next_counter = (counter + 1) % len(recipients)
-        update_email_counter(next_counter)
         
+        # Check if we've reached the end of the list
+        if counter >= len(recipients):
+            logger.info(f"✅ All {len(recipients)} recipients have been contacted. Email campaign completed.")
+            return None
+        
+        # Get current recipient
         recipient = recipients[counter]
+        
+        # Update counter for next email (but don't loop back)
+        next_counter = counter + 1
+        update_email_counter(next_counter)
         
         # Extract recipient data
         first_name = recipient.get('First Name', '').strip()
@@ -530,10 +538,34 @@ def cron_send_emails():
                         'message': f'❌ Failed to send email: {message}'
                     }), 500
             else:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No recipient data available'
-                }), 500
+                # Check if campaign is completed vs other errors
+                csv_path = os.environ.get('CSV_FILE_PATH', 'data/contacts_real.csv')
+                counter = get_email_counter()
+                
+                try:
+                    with open(csv_path, 'r', encoding='utf-8') as file:
+                        total_recipients = len(list(csv.DictReader(file)))
+                    
+                    if counter >= total_recipients:
+                        return jsonify({
+                            'status': 'completed',
+                            'message': f'✅ Email campaign completed! All {total_recipients} recipients have been contacted.',
+                            'timestamp': now.isoformat(),
+                            'campaign_stats': {
+                                'total_sent': total_recipients,
+                                'current_counter': counter
+                            }
+                        })
+                    else:
+                        return jsonify({
+                            'status': 'error',
+                            'message': 'No recipient data available - unexpected error'
+                        }), 500
+                except:
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'No recipient data available - CSV file error'
+                    }), 500
         else:
             reason = "weekend" if not is_weekday else "outside business hours"
             return jsonify({
