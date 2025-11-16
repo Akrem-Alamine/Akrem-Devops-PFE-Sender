@@ -1,5 +1,7 @@
 runtime: python311
 
+entrypoint: gunicorn --bind :$PORT main_test:app
+
 env_variables:
   EMAIL_ADDRESS: "akrem.alamine@gmail.com"
   EMAIL_PASSWORD: "apkrvuqqrhhwscas"
