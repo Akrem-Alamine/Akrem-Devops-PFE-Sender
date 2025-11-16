@@ -421,14 +421,14 @@ def test_automation():
             # Get company info for automation
             company = recipient_data.get('company', '')
             first_name = recipient_data.get('first_name', '')
+            last_name = recipient_data.get('last_name', '')
+            title = recipient_data.get('title', '')
+            country = recipient_data.get('country', '')
             
             if company:
                 # Research company and generate personalized content
                 company_info = research_company(company)
-                personalized_email = generate_personalized_email(first_name, company, company_info)
-                
-                subject = f"Software Developer Opportunity at {company}"
-                body = personalized_email
+                subject, body = generate_personalized_email(first_name, last_name, title, company, country, company_info)
             else:
                 # Fallback to default content
                 subject = recipient_data['subject']
