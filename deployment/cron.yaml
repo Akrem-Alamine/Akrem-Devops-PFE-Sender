@@ -3,4 +3,3 @@ cron:
   url: /cron/send-emails
   schedule: every 1 minutes
   timezone: UTC
-  method: POST
