@@ -1,0 +1,5 @@
+cron:
+- description: "Send automated emails every minute during business hours"
+  url: /cron/send-emails
+  schedule: every 1 minutes
+  timezone: UTC
