@@ -1,21 +1,15 @@
 runtime: python311
 
-entrypoint: gunicorn --bind :$PORT main_test:app
-
 env_variables:
   EMAIL_ADDRESS: "akrem.alamine@gmail.com"
-  EMAIL_PASSWORD: "apkrvuqqrhhwscas"  # Using the same Gmail app password
+  EMAIL_PASSWORD: "apkrvuqqrhhwscas"
   CSV_FILE_PATH: "data/recipients.csv"
   CV_FILE_PATH: "assets/Akrem_Alamine_ENOP.pdf"
   SMTP_SERVER: "smtp.gmail.com"
   SMTP_PORT: "587"
-  START_HOUR: "0"   # Disabled for testing
-  END_HOUR: "23"    # Disabled for testing
+  START_HOUR: "0"
+  END_HOUR: "23"
 
 automatic_scaling:
   min_instances: 1
   max_instances: 3
-
-handlers:
-- url: /.*
-  script: auto
