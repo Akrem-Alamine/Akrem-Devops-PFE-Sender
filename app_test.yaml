@@ -1,10 +1,10 @@
-runtime: python39
+runtime: python311
 
 entrypoint: gunicorn --bind :$PORT main_test:app
 
 env_variables:
   EMAIL_ADDRESS: "akrem.alamine@gmail.com"
-  EMAIL_PASSWORD: "your_app_password_here"  # Replace with your Gmail app password
+  EMAIL_PASSWORD: "apkrvuqqrhhwscas"  # Using the same Gmail app password
   CSV_FILE_PATH: "data/recipients.csv"
   START_HOUR: "0"   # Disabled for testing
   END_HOUR: "23"    # Disabled for testing
