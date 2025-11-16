@@ -416,12 +416,14 @@ def cron_send_emails():
         sender_email = os.environ.get('EMAIL_ADDRESS')
         sender_password = os.environ.get('EMAIL_PASSWORD')
         
-        # Business hours check
+        # Business hours check - ignore if in test mode
         is_weekday = current_weekday < 5
         is_business_hours = start_hour <= current_hour < end_hour
+        test_mode = os.environ.get('TEST_MODE', 'false').lower() == 'true'
         
-        if is_weekday and is_business_hours:
-            logger.info(f"✅ Cron executed during business hours: {now.isoformat()}")
+        if test_mode or (is_weekday and is_business_hours):
+            mode_msg = "TEST MODE - ignoring business hours" if test_mode else "business hours"
+            logger.info(f"✅ Automated pipeline started: {now.isoformat()} ({mode_msg})")
             
             if not sender_email or not sender_password:
                 return jsonify({'status': 'error', 'message': 'Email credentials not configured'}), 500
