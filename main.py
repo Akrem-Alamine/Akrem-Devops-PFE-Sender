@@ -112,7 +112,7 @@ Best regards,
 
 Akrem Alamine
 DevOps & Cloud Engineering Student
-Email: akrem.alamine@gmail.com
+Email: akrem.alamine@etudiant-fst.utm.tn
 LinkedIn: linkedin.com/in/akrem-alamine
 GitHub: github.com/Akrem-Alamine"""
 
