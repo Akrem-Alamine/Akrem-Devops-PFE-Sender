@@ -44,6 +44,36 @@ def update_email_counter(counter):
     except Exception as e:
         logger.error(f"Failed to update counter: {e}")
 
+def remove_recipient_from_csv(recipient_email):
+    """Remove recipient from CSV after successful email sending"""
+    try:
+        csv_path = os.environ.get('CSV_FILE_PATH', 'data/contacts_real.csv')
+        
+        if not os.path.exists(csv_path):
+            logger.error(f"CSV file not found: {csv_path}")
+            return False
+        
+        # Read all recipients
+        recipients = []
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            fieldnames = reader.fieldnames
+            recipients = [row for row in reader if row.get('Email', '').strip() != recipient_email]
+        
+        # Write back the remaining recipients
+        with open(csv_path, 'w', newline='', encoding='utf-8') as file:
+            if fieldnames:
+                writer = csv.DictWriter(file, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(recipients)
+        
+        logger.info(f"✅ Removed {recipient_email} from CSV. Remaining recipients: {len(recipients)}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to remove recipient from CSV: {e}")
+        return False
+
 def research_company(company_name):
     """Research company information automatically"""
     try:
@@ -185,20 +215,16 @@ def get_next_recipient():
             logger.warning("No recipients found in CSV file")
             return None
             
-        # Sequential selection (no looping)
-        counter = get_email_counter()
-        
-        # Check if we've reached the end of the list
-        if counter >= len(recipients):
-            logger.info(f"✅ All {len(recipients)} recipients have been contacted. Email campaign completed.")
+        # Always get the first recipient since we remove processed ones
+        if len(recipients) == 0:
+            logger.info("✅ All recipients have been contacted. Email campaign completed - CSV is now empty.")
             return None
         
-        # Get current recipient
-        recipient = recipients[counter]
+        # Get the first recipient (index 0)
+        recipient = recipients[0]
         
-        # Update counter for next email (but don't loop back)
-        next_counter = counter + 1
-        update_email_counter(next_counter)
+        # Keep counter for tracking purposes
+        counter = get_email_counter()
         
         # Extract recipient data
         first_name = recipient.get('First Name', '').strip()
@@ -449,9 +475,13 @@ def test_automation():
             )
             
             if success:
+                # Remove the recipient from CSV after successful automated email
+                remove_success = remove_recipient_from_csv(recipient_data['email'])
+                removal_msg = " - Recipient removed from CSV" if remove_success else " - Warning: Failed to remove from CSV"
+                
                 return jsonify({
                     'status': 'success',
-                    'message': f'✅ Automated email sent! ({message})',
+                    'message': f'✅ Automated email sent! ({message}){removal_msg}',
                     'details': {
                         'to': recipient_data['email'],
                         'recipient_name': recipient_data['full_name'],
@@ -459,7 +489,8 @@ def test_automation():
                         'subject': subject,
                         'automation_features': ['Company Research', 'AI Content Generation'],
                         'recipient_number': recipient_data['counter'] + 1,
-                        'total_recipients': recipient_data['total_recipients']
+                        'total_recipients': recipient_data['total_recipients'],
+                        'removed_from_csv': remove_success
                     }
                 })
             else:
@@ -508,16 +539,21 @@ def cron_send_emails():
                 )
                 
                 if success:
+                    # Remove the recipient from CSV after successful email
+                    remove_success = remove_recipient_from_csv(recipient_data['email'])
+                    removal_msg = " - Recipient removed from CSV" if remove_success else " - Warning: Failed to remove from CSV"
+                    
                     return jsonify({
                         'status': 'success',
-                        'message': f'✅ Email sent successfully! ({message})',
+                        'message': f'✅ Email sent successfully! ({message}){removal_msg}',
                         'timestamp': now.isoformat(),
                         'email_details': {
                             'to': recipient_data['email'],
                             'recipient_name': recipient_data['full_name'],
                             'subject': recipient_data['subject'],
                             'recipient_number': recipient_data['counter'] + 1,
-                            'total_recipients': recipient_data['total_recipients']
+                            'total_recipients': recipient_data['total_recipients'],
+                            'removed_from_csv': remove_success
                         }
                     })
                 else:
@@ -526,29 +562,34 @@ def cron_send_emails():
                         'message': f'❌ Failed to send email: {message}'
                     }), 500
             else:
-                # Check if campaign is completed vs other errors
+                # Check if campaign is completed (CSV is empty) vs other errors
                 csv_path = os.environ.get('CSV_FILE_PATH', 'data/contacts_real.csv')
-                counter = get_email_counter()
                 
                 try:
-                    with open(csv_path, 'r', encoding='utf-8') as file:
-                        total_recipients = len(list(csv.DictReader(file)))
-                    
-                    if counter >= total_recipients:
-                        return jsonify({
-                            'status': 'completed',
-                            'message': f'✅ Email campaign completed! All {total_recipients} recipients have been contacted.',
-                            'timestamp': now.isoformat(),
-                            'campaign_stats': {
-                                'total_sent': total_recipients,
-                                'current_counter': counter
-                            }
-                        })
+                    if os.path.exists(csv_path):
+                        with open(csv_path, 'r', encoding='utf-8') as file:
+                            remaining_recipients = len(list(csv.DictReader(file)))
+                        
+                        if remaining_recipients == 0:
+                            return jsonify({
+                                'status': 'completed',
+                                'message': '✅ Email campaign completed! CSV is now empty - all recipients have been contacted.',
+                                'timestamp': now.isoformat(),
+                                'campaign_stats': {
+                                    'csv_status': 'empty',
+                                    'remaining_recipients': 0
+                                }
+                            })
+                        else:
+                            return jsonify({
+                                'status': 'error',
+                                'message': f'No recipient data available - unexpected error ({remaining_recipients} recipients still in CSV)'
+                            }), 500
                     else:
                         return jsonify({
-                            'status': 'error',
-                            'message': 'No recipient data available - unexpected error'
-                        }), 500
+                            'status': 'completed',
+                            'message': '✅ Email campaign completed! CSV file no longer exists.'
+                        })
                 except:
                     return jsonify({
                         'status': 'error',
@@ -592,14 +633,19 @@ def test_email():
             )
             
             if success:
+                # Remove the recipient from CSV after successful test email
+                remove_success = remove_recipient_from_csv(recipient_data['email'])
+                removal_msg = " - Recipient removed from CSV" if remove_success else " - Warning: Failed to remove from CSV"
+                
                 return jsonify({
                     'status': 'success',
-                    'message': f'✅ Test email sent! ({message})',
+                    'message': f'✅ Test email sent! ({message}){removal_msg}',
                     'details': {
                         'to': recipient_data['email'],
                         'recipient_name': recipient_data['full_name'],
                         'recipient_number': recipient_data['counter'] + 1,
-                        'total_recipients': recipient_data['total_recipients']
+                        'total_recipients': recipient_data['total_recipients'],
+                        'removed_from_csv': remove_success
                     }
                 })
             else:
