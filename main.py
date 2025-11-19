@@ -367,10 +367,10 @@ def debug_csv():
             reader = csv.DictReader(file)
             recipients = list(reader)
         
-        # Get current recipient
+        # Get first recipient (top of CSV)
         counter = get_email_counter()
         if recipients:
-            recipient = recipients[counter % len(recipients)]
+            recipient = recipients[0]  # Always get the first recipient since we remove processed ones
             return jsonify({
                 'csv_path': csv_path,
                 'total_recipients': len(recipients),
@@ -406,9 +406,9 @@ def test_simple():
         if not recipients:
             return jsonify({'status': 'error', 'message': 'No recipients found'}), 500
             
-        # Get current recipient without AI processing
+        # Get first recipient (top of CSV) without AI processing
         counter = get_email_counter()
-        recipient = recipients[counter % len(recipients)]
+        recipient = recipients[0]  # Always get the first recipient since we remove processed ones
         
         # Simple data extraction
         first_name = recipient.get('First Name', '').strip()
